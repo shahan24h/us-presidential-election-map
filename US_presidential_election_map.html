@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Republic Decides — US Presidential Elections 1789–2024</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<style>
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
+  --bg-card: #1e1e3a;
+  --bg-card-hover: #252550;
+  --text-primary: #e8e8f0;
+  --text-secondary: #a0a0b8;
+  --text-muted: #6a6a88;
+  --accent-gold: #ffd600;
+  --accent-red: #d32f2f;
+  --accent-blue: #1565c0;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-active: rgba(255,255,255,0.15);
+  --shadow-deep: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 20px rgba(255,214,0,0.15);
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --radius: 8px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* LAYOUT */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr 360px;
+  grid-template-areas:
+    "header header"
+    "map sidebar"
+    "timeline timeline";
+  height: 100vh;
+  width: 100%;
+}
+
+/* HEADER */
+.header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, rgba(22,33,62,0.95) 0%, rgba(26,26,46,0.9) 100%);
+  backdrop-filter: blur(10px);
+  z-index: 100;
+}
+
+.header-left { display: flex; align-items: center; gap: 20px; }
+
+.header h1 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.header h1 span {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.85em;
+}
+
+.year-display {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(255,214,0,0.25);
+  min-width: 100px;
+  text-align: center;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+
+.btn.active {
+  background: rgba(255,214,0,0.12);
+  border-color: rgba(255,214,0,0.4);
+  color: var(--accent-gold);
+}
+
+.btn-play {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,214,0,0.1);
+  border-color: rgba(255,214,0,0.3);
+  color: var(--accent-gold);
+}
+
+.btn-play:hover { background: rgba(255,214,0,0.2); }
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.speed-btn {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.speed-btn:hover { color: var(--text-secondary); }
+.speed-btn.active { color: var(--accent-gold); border-color: rgba(255,214,0,0.3); background: rgba(255,214,0,0.08); }
+
+/* MAP AREA */
+.map-container {
+  grid-area: map;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 50%, rgba(22,33,62,0.6) 0%, var(--bg-primary) 70%);
+}
+
+.map-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+.map-container .state {
+  stroke: rgba(255,255,255,0.12);
+  stroke-width: 0.5;
+  cursor: pointer;
+  transition: fill 0.6s ease, opacity 0.3s ease;
+}
+
+.map-container .state:hover {
+  stroke: rgba(255,255,255,0.5);
+  stroke-width: 1.2;
+  filter: brightness(1.2);
+}
+
+.map-container .state.swing-glow {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { stroke-width: 1.5; stroke: rgba(255,214,0,0.6); filter: drop-shadow(0 0 4px rgba(255,214,0,0.3)); }
+  50% { stroke-width: 2.5; stroke: rgba(255,214,0,1); filter: drop-shadow(0 0 10px rgba(255,214,0,0.5)); }
+}
+
+.map-container .county {
+  stroke: rgba(255,255,255,0.05);
+  stroke-width: 0.2;
+}
+
+.county-back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius);
+  background: rgba(26,26,46,0.9);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: none;
+  gap: 6px;
+  align-items: center;
+  backdrop-filter: blur(8px);
+}
+
+.county-back-btn.visible { display: flex; }
+
+.county-note {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: rgba(26,26,46,0.85);
+  padding: 6px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+  display: none;
+  white-space: nowrap;
+}
+
+.county-note.visible { display: block; }
+
+/* TOOLTIP */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(15,15,30,0.95);
+  border: 1px solid var(--border-active);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-deep);
+  max-width: 240px;
+}
+
+.tooltip.show { opacity: 1; }
+
+.tooltip .tt-state {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.tooltip .tt-party {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* SIDEBAR */
+.sidebar {
+  grid-area: sidebar;
+  overflow-y: auto;
+  padding: 20px;
+  border-left: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-primary) 100%);
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 2px; }
+
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.sidebar-section h3 {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.candidate-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.02);
+  margin-bottom: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.candidate-rank {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: center;
+}
+
+.candidate-info { flex: 1; }
+
+.candidate-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.candidate-party-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+
+.candidate-ev {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-align: right;
+  line-height: 1;
+}
+
+.candidate-ev small {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* EV Bar */
+.ev-bar-container {
+  margin: 12px 0 6px;
+}
+
+.ev-bar {
+  display: flex;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.03);
+}
+
+.ev-bar-segment {
+  transition: width 0.6s ease;
+  position: relative;
+}
+
+.ev-bar-label {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Popular Vote */
+.pv-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pv-stat {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+}
+
+.pv-stat .pv-value {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.pv-stat .pv-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* Third party */
+.third-party-list {
+  list-style: none;
+}
+
+.third-party-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.8rem;
+}
+
+.third-party-item:last-child { border: none; }
+
+.tp-name { font-weight: 500; }
+.tp-party {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.tp-ev {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Notes */
+.election-note {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 12px;
+  border-left: 3px solid var(--accent-gold);
+  background: rgba(255,214,0,0.03);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* Swing info */
+.swing-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  background: rgba(255,214,0,0.05);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,214,0,0.15);
+}
+
+.swing-count {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--accent-gold);
+}
+
+/* TIMELINE */
+.timeline-container {
+  grid-area: timeline;
+  border-top: 1px solid var(--border-subtle);
+  background: linear-gradient(0deg, rgba(15,15,30,0.95) 0%, rgba(26,26,46,0.9) 100%);
+  padding: 10px 0 12px;
+  position: relative;
+}
+
+.timeline-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-active) transparent;
+  padding: 0 20px;
+  scroll-behavior: smooth;
+  touch-action: pan-x;
+}
+
+.timeline-scroll::-webkit-scrollbar { height: 4px; }
+.timeline-scroll::-webkit-scrollbar-track { background: transparent; }
+.timeline-scroll::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 2px; }
+
+.timeline-track {
+  display: flex;
+  gap: 0;
+  white-space: nowrap;
+  min-width: max-content;
+  align-items: flex-end;
+  padding-bottom: 2px;
+}
+
+.timeline-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 6px;
+  min-width: 46px;
+  border-radius: 4px;
+  transition: var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.timeline-item:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.timeline-item.active {
+  background: rgba(255,214,0,0.1);
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-bottom: 4px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid rgba(0,0,0,0.3);
+}
+
+.timeline-item:hover .timeline-dot {
+  transform: scale(1.3);
+}
+
+.timeline-item.active .timeline-dot {
+  transform: scale(1.5);
+  box-shadow: 0 0 10px rgba(255,214,0,0.5);
+  border-color: var(--accent-gold);
+}
+
+.timeline-year {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.timeline-item:hover .timeline-year { color: var(--text-secondary); }
+.timeline-item.active .timeline-year { color: var(--accent-gold); font-weight: 700; }
+
+.timeline-winner-name {
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  max-width: 54px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.timeline-item:hover .timeline-winner-name,
+.timeline-item.active .timeline-winner-name { opacity: 1; }
+
+/* MOBILE SIDEBAR TOGGLE */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-deep);
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-close {
+  display: none;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 510;
+  font-size: 1.4rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  color: var(--text-primary);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+/* LOADING */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  transition: opacity 0.5s ease;
+}
+
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+.loading-text {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.loading-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.loading-bar {
+  width: 200px;
+  height: 2px;
+  background: var(--border-subtle);
+  border-radius: 1px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.loading-bar-inner {
+  width: 30%;
+  height: 100%;
+  background: var(--accent-gold);
+  border-radius: 1px;
+  animation: loadSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes loadSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* MOBILE INFO CARD - floating mini summary on map */
+.mobile-info-card {
+  display: none;
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(30,30,58,0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  z-index: 50;
+  font-size: 0.8rem;
+}
+
+.mobile-info-card .mic-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-info-card .mic-winner {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.mobile-info-card .mic-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #fff;
+}
+
+.mobile-info-card .mic-ev {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.mobile-info-card .mic-ev small {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mobile-info-card .mic-bar {
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  margin-top: 6px;
+  background: rgba(255,255,255,0.06);
+}
+
+.mobile-info-card .mic-bar-seg {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+@media (min-width: 769px) {
+  .mobile-info-card { display: none !important; }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-areas:
+      "header"
+      "map"
+      "sidebar"
+      "timeline";
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+    max-height: none;
+  }
+
+  .map-container {
+    min-height: 50vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header h1 { font-size: 1rem; }
+  .header h1 span { display: none; }
+  .year-display { font-size: 1.8rem; min-width: 70px; }
+
+  .header-controls { flex-wrap: wrap; gap: 6px; }
+
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "header"
+      "map"
+      "timeline";
+    height: 100vh;
+  }
+
+  .sidebar {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: var(--bg-primary);
+    overflow-y: auto;
+    padding-top: 60px;
+  }
+
+  .mobile-info-card { display: block; }
+
+  .sidebar.mobile-open { display: block; }
+
+  .sidebar.mobile-open ~ .sidebar-close { display: flex; align-items: center; justify-content: center; }
+
+  .sidebar-toggle { display: flex; }
+
+  .map-container { min-height: 50vh; }
+
+  .timeline-item { min-width: 40px; padding: 4px 4px; }
+  .timeline-year { font-size: 0.55rem; }
+  .timeline-scroll { padding: 0 12px; }
+  .timeline-track { padding-left: 4px; padding-right: 4px; }
+
+  .btn { font-size: 0.7rem; padding: 6px 10px; }
+}
+
+@media (max-width: 400px) {
+  .header-controls .speed-control { display: none; }
+  .year-display { font-size: 1.5rem; }
+  .timeline-item { min-width: 36px; }
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-text">The Republic Decides</div>
+  <div class="loading-sub">Loading 235 years of American democracy</div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+</div>
+
+<div class="app">
+  <header class="header">
+    <div class="header-left">
+      <h1>The Republic Decides <span>— Every Presidential Election</span></h1>
+      <div class="year-display" id="yearDisplay">2024</div>
+    </div>
+    <div class="header-controls">
+      <button class="btn btn-play" id="btnPlay" onclick="togglePlay()">
+        <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        <svg id="pauseIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+        <span id="playLabel">Play</span>
+      </button>
+      <div class="speed-control">
+        <button class="speed-btn" data-speed="3000" onclick="setSpeed(3000, this)">1×</button>
+        <button class="speed-btn active" data-speed="2000" onclick="setSpeed(2000, this)">2×</button>
+        <button class="speed-btn" data-speed="800" onclick="setSpeed(800, this)">4×</button>
+      </div>
+      <button class="btn" id="btnSwing" onclick="toggleSwing()">Swing States</button>
+    </div>
+  </header>
+
+  <div class="map-container" id="mapContainer">
+    <button class="county-back-btn" id="countyBackBtn" onclick="exitCountyView()">← Back to National</button>
+    <div class="county-note" id="countyNote">County-level detail shown for illustration — actual county data varies</div>
+    <div class="mobile-info-card" id="mobileInfoCard">
+      <div class="mic-row">
+        <div>
+          <div class="mic-winner" id="micWinner">—</div>
+          <span class="mic-badge" id="micBadge">—</span>
+        </div>
+        <div class="mic-ev" id="micEV">—<small>Electoral Votes</small></div>
+      </div>
+      <div class="mic-bar" id="micBar"></div>
+    </div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-section" id="sectionWinner">
+      <h3>Winner</h3>
+      <div class="candidate-card" id="winnerCard">
+        <div class="candidate-rank">1</div>
+        <div class="candidate-info">
+          <div class="candidate-name" id="winnerName">—</div>
+          <div class="candidate-party-badge" id="winnerBadge">—</div>
+        </div>
+        <div class="candidate-ev" id="winnerEV">—<small>Electoral Votes</small></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section" id="sectionRunnerUp">
+      <h3>Runner-Up</h3>
+      <div class="candidate-card" id="runnerCard">
+        <div class="candidate-rank">2</div>
+        <div class="candidate-info">
+          <div class="candidate-name" id="runnerName">—</div>
+          <div class="candidate-party-badge" id="runnerBadge">—</div>
+        </div>
+        <div class="candidate-ev" id="runnerEV">—<small>Electoral Votes</small></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Electoral College</h3>
+      <div class="ev-bar-container">
+        <div class="ev-bar" id="evBar"></div>
+        <div class="ev-bar-label">
+          <span id="evLabelLeft">—</span>
+          <span id="evLabelCenter">Total: —</span>
+          <span id="evLabelRight">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section" id="sectionPV" style="display:none">
+      <h3>Popular Vote</h3>
+      <div class="pv-container">
+        <div class="pv-stat">
+          <div class="pv-value" id="pvWinner">—</div>
+          <div class="pv-label" id="pvWinnerLabel">Winner</div>
+        </div>
+        <div class="pv-stat">
+          <div class="pv-value" id="pvRunner">—</div>
+          <div class="pv-label" id="pvRunnerLabel">Runner-Up</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section" id="sectionThird" style="display:none">
+      <h3>Notable Third Parties</h3>
+      <ul class="third-party-list" id="thirdPartyList"></ul>
+    </div>
+
+    <div class="sidebar-section" id="sectionSwing" style="display:none">
+      <h3>Swing States</h3>
+      <div class="swing-info">
+        <span class="swing-count" id="swingCount">0</span>
+        <span> states flipped from the previous election</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Historical Note</h3>
+      <div class="election-note" id="electionNote">—</div>
+    </div>
+  </aside>
+  <button class="sidebar-close" id="sidebarClose" onclick="toggleSidebar()" aria-label="Close details">✕</button>
+
+  <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Show election details">ℹ</button>
+
+  <div class="timeline-container">
+    <div class="timeline-scroll" id="timelineScroll">
+      <div class="timeline-track" id="timelineTrack"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tt-state"></div>
+  <div class="tt-party"></div>
+</div>
+
+<script>
+// ============================================
+// EMBEDDED ELECTION DATA
+// ============================================
+const ELECTION_DATA = [
+  {year:1789,winner:"George Washington",winner_party:"independent",winner_ev:69,runner_up:"John Adams",runner_up_party:"federalist",runner_up_ev:34,total_ev:138,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[],notes:"No popular vote. Each elector cast 2 votes; Washington received unanimous 1st-vote. Adams elected VP with 34 second-votes. NY did not participate (legislature deadlock). NC and RI had not yet ratified the Constitution.",states:{CT:"federalist",DE:"federalist",GA:"independent",MD:"independent",MA:"independent",NH:"independent",NJ:"independent",PA:"independent",SC:"independent",VA:"independent"}},
+  {year:1792,winner:"George Washington",winner_party:"independent",winner_ev:132,runner_up:"John Adams",runner_up_party:"federalist",runner_up_ev:77,total_ev:264,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[{name:"George Clinton",party:"dem-rep",ev:50}],notes:"Washington unanimously re-elected. Adams re-elected VP. Clinton (Anti-Federalist/Democratic-Republican) ran for VP, won NY, NC, VA, GA, KY.",states:{CT:"federalist",DE:"federalist",GA:"dem-rep",KY:"dem-rep",MD:"independent",MA:"federalist",NH:"federalist",NJ:"federalist",NY:"dem-rep",NC:"dem-rep",PA:"federalist",RI:"federalist",SC:"federalist",VT:"federalist",VA:"dem-rep"}},
+  {year:1796,winner:"John Adams",winner_party:"federalist",winner_ev:71,runner_up:"Thomas Jefferson",runner_up_party:"dem-rep",runner_up_ev:68,total_ev:276,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[{name:"Thomas Pinckney",party:"federalist",ev:59},{name:"Aaron Burr",party:"dem-rep",ev:30}],notes:"First contested election. Jefferson became VP as runner-up.",states:{CT:"federalist",DE:"federalist",GA:"dem-rep",KY:"dem-rep",MD:"federalist",MA:"federalist",NH:"federalist",NJ:"federalist",NY:"federalist",NC:"dem-rep",PA:"dem-rep",RI:"federalist",SC:"dem-rep",TN:"dem-rep",VT:"federalist",VA:"dem-rep"}},
+  {year:1800,winner:"Thomas Jefferson",winner_party:"dem-rep",winner_ev:73,runner_up:"John Adams",runner_up_party:"federalist",runner_up_ev:65,total_ev:276,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[],notes:"Jefferson and Burr tied at 73 EVs each; House chose Jefferson. Resolved by 12th Amendment thereafter.",states:{CT:"federalist",DE:"federalist",GA:"dem-rep",KY:"dem-rep",MD:"dem-rep",MA:"federalist",NH:"federalist",NJ:"federalist",NY:"dem-rep",NC:"dem-rep",PA:"dem-rep",RI:"federalist",SC:"dem-rep",TN:"dem-rep",VT:"federalist",VA:"dem-rep"}},
+  {year:1804,winner:"Thomas Jefferson",winner_party:"dem-rep",winner_ev:162,runner_up:"Charles C. Pinckney",runner_up_party:"federalist",runner_up_ev:14,total_ev:176,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[],notes:"First election under 12th Amendment. Jefferson won 15 states, Pinckney only CT and DE.",states:{CT:"federalist",DE:"federalist",GA:"dem-rep",KY:"dem-rep",MD:"dem-rep",MA:"dem-rep",NH:"dem-rep",NJ:"dem-rep",NY:"dem-rep",NC:"dem-rep",OH:"dem-rep",PA:"dem-rep",RI:"dem-rep",SC:"dem-rep",TN:"dem-rep",VT:"dem-rep",VA:"dem-rep"}},
+  {year:1808,winner:"James Madison",winner_party:"dem-rep",winner_ev:122,runner_up:"Charles C. Pinckney",runner_up_party:"federalist",runner_up_ev:47,total_ev:176,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[{name:"George Clinton",party:"dem-rep",ev:6}],notes:"6 electors voted for VP George Clinton as a protest presidential vote. Pinckney carried New England.",states:{CT:"federalist",DE:"federalist",GA:"dem-rep",KY:"dem-rep",MD:"dem-rep",MA:"federalist",NH:"federalist",NJ:"dem-rep",NY:"dem-rep",NC:"dem-rep",OH:"dem-rep",PA:"dem-rep",RI:"federalist",SC:"dem-rep",TN:"dem-rep",VT:"dem-rep",VA:"dem-rep"}},
+  {year:1812,winner:"James Madison",winner_party:"dem-rep",winner_ev:128,runner_up:"DeWitt Clinton",runner_up_party:"dem-rep",runner_up_ev:89,total_ev:217,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[],notes:"Both candidates were nominally Democratic-Republicans; Clinton represented anti-war Federalist-backed faction.",states:{CT:"dem-rep",DE:"dem-rep",GA:"dem-rep",KY:"dem-rep",LA:"dem-rep",MD:"dem-rep",MA:"dem-rep",NH:"dem-rep",NJ:"dem-rep",NY:"dem-rep",NC:"dem-rep",OH:"dem-rep",PA:"dem-rep",RI:"dem-rep",SC:"dem-rep",TN:"dem-rep",VT:"dem-rep",VA:"dem-rep"}},
+  {year:1816,winner:"James Monroe",winner_party:"dem-rep",winner_ev:183,runner_up:"Rufus King",runner_up_party:"federalist",runner_up_ev:34,total_ev:217,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[],notes:"Last Federalist presidential candidate. Monroe won 16 of 19 states.",states:{CT:"federalist",DE:"federalist",GA:"dem-rep",IN:"dem-rep",KY:"dem-rep",LA:"dem-rep",MD:"dem-rep",MA:"federalist",NH:"dem-rep",NJ:"dem-rep",NY:"dem-rep",NC:"dem-rep",OH:"dem-rep",PA:"dem-rep",RI:"dem-rep",SC:"dem-rep",TN:"dem-rep",VT:"dem-rep",VA:"dem-rep"}},
+  {year:1820,winner:"James Monroe",winner_party:"dem-rep",winner_ev:231,runner_up:"John Quincy Adams",runner_up_party:"dem-rep",runner_up_ev:1,total_ev:232,winner_pv_pct:null,runner_up_pv_pct:null,third_party_candidates:[],notes:"Near-unanimous re-election. 1 faithless elector voted for J.Q. Adams. Era of Good Feelings.",states:{AL:"dem-rep",CT:"dem-rep",DE:"dem-rep",GA:"dem-rep",IL:"dem-rep",IN:"dem-rep",KY:"dem-rep",LA:"dem-rep",ME:"dem-rep",MD:"dem-rep",MA:"dem-rep",MS:"dem-rep",MO:"dem-rep",NH:"dem-rep",NJ:"dem-rep",NY:"dem-rep",NC:"dem-rep",OH:"dem-rep",PA:"dem-rep",RI:"dem-rep",SC:"dem-rep",TN:"dem-rep",VT:"dem-rep",VA:"dem-rep"}},
+  {year:1824,winner:"John Quincy Adams",winner_party:"dem-rep",winner_ev:84,runner_up:"Andrew Jackson",runner_up_party:"dem-rep",runner_up_ev:99,total_ev:261,winner_pv_pct:30.92,runner_up_pv_pct:41.36,third_party_candidates:[{name:"William H. Crawford",party:"dem-rep",ev:41,pv_pct:11.17},{name:"Henry Clay",party:"dem-rep",ev:37,pv_pct:13.04}],notes:"No candidate won a majority. Jackson won the most popular votes and EVs, but the House chose Adams. 'Corrupt Bargain' controversy.",states:{AL:"jackson",CT:"adams",DE:"crawford",GA:"crawford",IL:"adams",IN:"jackson",KY:"clay",LA:"jackson",ME:"adams",MD:"jackson",MA:"adams",MS:"jackson",MO:"clay",NH:"adams",NJ:"jackson",NY:"adams",NC:"jackson",OH:"clay",PA:"jackson",RI:"adams",SC:"jackson",TN:"jackson",VT:"adams",VA:"crawford"}},
+  {year:1828,winner:"Andrew Jackson",winner_party:"democrat",winner_ev:178,runner_up:"John Quincy Adams",runner_up_party:"national-republican",runner_up_ev:83,total_ev:261,winner_pv_pct:55.93,runner_up_pv_pct:43.68,third_party_candidates:[],notes:"First election with widespread popular vote. Birth of the modern Democratic Party.",states:{AL:"democrat",CT:"national-republican",DE:"national-republican",GA:"democrat",IL:"democrat",IN:"democrat",KY:"democrat",LA:"democrat",ME:"national-republican",MD:"national-republican",MA:"national-republican",MS:"democrat",MO:"democrat",NH:"national-republican",NJ:"national-republican",NY:"democrat",NC:"democrat",OH:"democrat",PA:"democrat",RI:"national-republican",SC:"democrat",TN:"democrat",VT:"national-republican",VA:"democrat"}},
+  {year:1832,winner:"Andrew Jackson",winner_party:"democrat",winner_ev:219,runner_up:"Henry Clay",runner_up_party:"national-republican",runner_up_ev:49,total_ev:286,winner_pv_pct:54.74,runner_up_pv_pct:36.93,third_party_candidates:[{name:"William Wirt",party:"anti-masonic",ev:7,pv_pct:7.78},{name:"John Floyd",party:"nullifier",ev:11,pv_pct:0.0}],notes:"SC gave 11 EVs to Nullifier candidate John Floyd. VT gave 7 EVs to Anti-Masonic Wirt.",states:{AL:"democrat",CT:"national-republican",DE:"national-republican",GA:"democrat",IL:"democrat",IN:"democrat",KY:"national-republican",LA:"democrat",ME:"democrat",MD:"national-republican",MA:"national-republican",MS:"democrat",MO:"democrat",NH:"democrat",NJ:"democrat",NY:"democrat",NC:"democrat",OH:"democrat",PA:"democrat",RI:"national-republican",SC:"nullifier",TN:"democrat",VT:"anti-masonic",VA:"democrat"}},
+  {year:1836,winner:"Martin Van Buren",winner_party:"democrat",winner_ev:170,runner_up:"William Henry Harrison",runner_up_party:"whig",runner_up_ev:73,total_ev:294,winner_pv_pct:50.79,runner_up_pv_pct:36.59,third_party_candidates:[{name:"Hugh L. White",party:"whig",ev:26,pv_pct:9.72},{name:"Daniel Webster",party:"whig",ev:14,pv_pct:2.74},{name:"Willie P. Mangum",party:"whig",ev:11,pv_pct:0.0}],notes:"Multiple Whig candidates ran regionally to deny Van Buren an electoral majority. Strategy failed.",states:{AL:"democrat",AR:"democrat",CT:"democrat",DE:"whig",GA:"whig",IL:"democrat",IN:"whig",KY:"whig",LA:"democrat",ME:"democrat",MD:"whig",MA:"whig",MI:"democrat",MS:"democrat",MO:"democrat",NH:"democrat",NJ:"whig",NY:"democrat",NC:"democrat",OH:"whig",PA:"democrat",RI:"democrat",SC:"whig",TN:"whig",VT:"whig",VA:"democrat"}},
+  {year:1840,winner:"William Henry Harrison",winner_party:"whig",winner_ev:234,runner_up:"Martin Van Buren",runner_up_party:"democrat",runner_up_ev:60,total_ev:294,winner_pv_pct:52.87,runner_up_pv_pct:46.82,third_party_candidates:[],notes:"'Tippecanoe and Tyler Too' campaign. First Whig victory. Harrison died after 31 days.",states:{AL:"democrat",AR:"democrat",CT:"whig",DE:"whig",GA:"whig",IL:"democrat",IN:"whig",KY:"whig",LA:"whig",ME:"whig",MD:"whig",MA:"whig",MI:"whig",MS:"whig",MO:"democrat",NH:"democrat",NJ:"whig",NY:"whig",NC:"whig",OH:"whig",PA:"whig",RI:"whig",SC:"democrat",TN:"whig",VT:"whig",VA:"democrat"}},
+  {year:1844,winner:"James K. Polk",winner_party:"democrat",winner_ev:170,runner_up:"Henry Clay",runner_up_party:"whig",runner_up_ev:105,total_ev:275,winner_pv_pct:49.54,runner_up_pv_pct:48.09,third_party_candidates:[{name:"James G. Birney",party:"liberty",ev:0,pv_pct:2.30}],notes:"Polk won on expansionist platform ('Manifest Destiny'). Liberty Party drew votes from Clay in NY.",states:{AL:"democrat",AR:"democrat",CT:"whig",DE:"whig",GA:"democrat",IL:"democrat",IN:"democrat",KY:"whig",LA:"democrat",ME:"democrat",MD:"whig",MA:"whig",MI:"democrat",MS:"democrat",MO:"democrat",NH:"democrat",NJ:"whig",NY:"democrat",NC:"whig",OH:"whig",PA:"democrat",RI:"whig",SC:"democrat",TN:"democrat",VT:"whig",VA:"democrat"}},
+  {year:1848,winner:"Zachary Taylor",winner_party:"whig",winner_ev:163,runner_up:"Lewis Cass",runner_up_party:"democrat",runner_up_ev:127,total_ev:290,winner_pv_pct:47.28,runner_up_pv_pct:42.49,third_party_candidates:[{name:"Martin Van Buren",party:"free-soil",ev:0,pv_pct:10.13}],notes:"Taylor won despite no popular vote majority. Free Soil candidate Van Buren won no EVs but drew significant votes.",states:{AL:"democrat",AR:"democrat",CT:"whig",DE:"whig",FL:"whig",GA:"whig",IL:"democrat",IN:"democrat",IA:"democrat",KY:"whig",LA:"whig",ME:"democrat",MD:"whig",MA:"whig",MI:"democrat",MS:"democrat",MO:"democrat",NH:"democrat",NJ:"whig",NY:"whig",NC:"whig",OH:"democrat",PA:"whig",RI:"whig",SC:"democrat",TN:"whig",TX:"democrat",VT:"whig",VA:"democrat",WI:"democrat"}},
+  {year:1852,winner:"Franklin Pierce",winner_party:"democrat",winner_ev:254,runner_up:"Winfield Scott",runner_up_party:"whig",runner_up_ev:42,total_ev:296,winner_pv_pct:50.83,runner_up_pv_pct:43.88,third_party_candidates:[{name:"John P. Hale",party:"free-soil",ev:0,pv_pct:4.91}],notes:"Last successful Whig presidential campaign. The Whig Party effectively collapsed after this election.",states:{AL:"democrat",AR:"democrat",CA:"democrat",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",IL:"democrat",IN:"democrat",IA:"democrat",KY:"whig",LA:"democrat",ME:"democrat",MD:"democrat",MA:"whig",MI:"democrat",MS:"democrat",MO:"democrat",NH:"democrat",NJ:"democrat",NY:"democrat",NC:"democrat",OH:"democrat",PA:"democrat",RI:"democrat",SC:"democrat",TN:"whig",TX:"democrat",VT:"whig",VA:"democrat",WI:"democrat"}},
+  {year:1856,winner:"James Buchanan",winner_party:"democrat",winner_ev:174,runner_up:"John C. Fremont",runner_up_party:"republican",runner_up_ev:114,total_ev:296,winner_pv_pct:45.29,runner_up_pv_pct:33.09,third_party_candidates:[{name:"Millard Fillmore",party:"know-nothing",ev:8,pv_pct:21.54}],notes:"First Republican presidential candidate (Fremont). Know-Nothing won only Maryland.",states:{AL:"democrat",AR:"democrat",CA:"democrat",CT:"republican",DE:"democrat",FL:"democrat",GA:"democrat",IL:"democrat",IN:"democrat",IA:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"know-nothing",MA:"republican",MI:"republican",MS:"democrat",MO:"democrat",NH:"republican",NJ:"democrat",NY:"republican",NC:"democrat",OH:"republican",PA:"democrat",RI:"republican",SC:"democrat",TN:"democrat",TX:"democrat",VT:"republican",VA:"democrat",WI:"republican"}},
+  {year:1860,winner:"Abraham Lincoln",winner_party:"republican",winner_ev:180,runner_up:"John C. Breckinridge",runner_up_party:"democrat",runner_up_ev:72,total_ev:303,winner_pv_pct:39.65,runner_up_pv_pct:29.52,third_party_candidates:[{name:"John Bell",party:"constitutional-union",ev:39,pv_pct:12.61},{name:"Stephen A. Douglas",party:"democrat",ev:12,pv_pct:29.46}],notes:"Four-way race. Lincoln not on ballot in most Southern states. Lincoln won with 39.65% of popular vote.",states:{AL:"democrat",AR:"democrat",CA:"republican",CT:"republican",DE:"democrat",FL:"democrat",GA:"democrat",IL:"republican",IN:"republican",IA:"republican",KY:"constitutional-union",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",NH:"republican",NJ:"republican",NY:"republican",NC:"democrat",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",TN:"constitutional-union",TX:"democrat",VT:"republican",VA:"constitutional-union",WI:"republican"}},
+  {year:1864,winner:"Abraham Lincoln",winner_party:"republican",winner_ev:212,runner_up:"George B. McClellan",runner_up_party:"democrat",runner_up_ev:21,total_ev:233,winner_pv_pct:55.03,runner_up_pv_pct:44.95,third_party_candidates:[],notes:"Lincoln ran on National Union ticket. 11 Confederate states did not participate.",states:{CA:"republican",CT:"republican",DE:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MO:"republican",NV:"republican",NH:"republican",NJ:"democrat",NY:"republican",OH:"republican",OR:"republican",PA:"republican",RI:"republican",VT:"republican",WV:"republican",WI:"republican"}},
+  {year:1868,winner:"Ulysses S. Grant",winner_party:"republican",winner_ev:214,runner_up:"Horatio Seymour",runner_up_party:"democrat",runner_up_ev:80,total_ev:294,winner_pv_pct:52.66,runner_up_pv_pct:47.34,third_party_candidates:[],notes:"Reconstruction era. Mississippi, Texas, and Virginia excluded (not yet re-admitted).",states:{AL:"republican",AR:"republican",CA:"republican",CT:"republican",DE:"democrat",FL:"republican",GA:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MO:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"democrat",NY:"democrat",NC:"republican",OH:"republican",OR:"democrat",PA:"republican",RI:"republican",SC:"republican",TN:"republican",VT:"republican",WV:"republican",WI:"republican"}},
+  {year:1872,winner:"Ulysses S. Grant",winner_party:"republican",winner_ev:286,runner_up:"Thomas A. Hendricks",runner_up_party:"democrat",runner_up_ev:42,total_ev:352,winner_pv_pct:55.58,runner_up_pv_pct:43.78,third_party_candidates:[{name:"Horace Greeley",party:"liberal-republican",ev:0,pv_pct:43.78}],notes:"Greeley died before electoral votes were cast; his EVs were redistributed. Grant won 31 states.",states:{AL:"republican",AR:"republican",CA:"republican",CT:"republican",DE:"republican",FL:"republican",GA:"dem-rep",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"dem-rep",LA:"republican",ME:"republican",MD:"dem-rep",MA:"republican",MI:"republican",MN:"republican",MS:"republican",MO:"dem-rep",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NY:"republican",NC:"republican",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"republican",TN:"dem-rep",TX:"dem-rep",VT:"republican",VA:"republican",WV:"republican",WI:"republican"}},
+  {year:1876,winner:"Rutherford B. Hayes",winner_party:"republican",winner_ev:185,runner_up:"Samuel J. Tilden",runner_up_party:"democrat",runner_up_ev:184,total_ev:369,winner_pv_pct:47.92,runner_up_pv_pct:50.92,third_party_candidates:[],notes:"Tilden won the popular vote but Hayes won the disputed Electoral College after the Compromise of 1877.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"republican",CT:"democrat",DE:"democrat",FL:"republican",GA:"democrat",IL:"republican",IN:"democrat",IA:"republican",KS:"republican",KY:"democrat",LA:"republican",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",NE:"republican",NV:"republican",NH:"republican",NJ:"democrat",NY:"democrat",NC:"democrat",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"republican",TN:"democrat",TX:"democrat",VT:"republican",VA:"democrat",WV:"democrat",WI:"republican"}},
+  {year:1880,winner:"James A. Garfield",winner_party:"republican",winner_ev:214,runner_up:"Winfield Scott Hancock",runner_up_party:"democrat",runner_up_ev:155,total_ev:369,winner_pv_pct:48.31,runner_up_pv_pct:48.22,third_party_candidates:[{name:"James B. Weaver",party:"greenback",ev:0,pv_pct:3.32}],notes:"Garfield won by only 1,898 popular votes (0.09%). Garfield assassinated in 1881.",states:{AL:"democrat",AR:"democrat",CA:"democrat",CO:"republican",CT:"republican",DE:"democrat",FL:"democrat",GA:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",NE:"republican",NV:"democrat",NH:"republican",NJ:"democrat",NY:"republican",NC:"democrat",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",TN:"democrat",TX:"democrat",VT:"republican",VA:"democrat",WV:"democrat",WI:"republican"}},
+  {year:1884,winner:"Grover Cleveland",winner_party:"democrat",winner_ev:219,runner_up:"James G. Blaine",runner_up_party:"republican",runner_up_ev:182,total_ev:401,winner_pv_pct:48.85,runner_up_pv_pct:48.28,third_party_candidates:[{name:"Benjamin Butler",party:"greenback",ev:0,pv_pct:1.74}],notes:"First Democrat to win since 1856. Cleveland won NY by 1,149 votes. 'Mugwumps' defected to Cleveland.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"republican",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",IL:"republican",IN:"democrat",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",NE:"republican",NV:"republican",NH:"republican",NJ:"democrat",NY:"democrat",NC:"democrat",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",TN:"democrat",TX:"democrat",VT:"republican",VA:"democrat",WV:"democrat",WI:"republican"}},
+  {year:1888,winner:"Benjamin Harrison",winner_party:"republican",winner_ev:233,runner_up:"Grover Cleveland",runner_up_party:"democrat",runner_up_ev:168,total_ev:401,winner_pv_pct:47.80,runner_up_pv_pct:48.63,third_party_candidates:[{name:"Clinton B. Fisk",party:"prohibition",ev:0,pv_pct:2.19}],notes:"Cleveland won the popular vote but lost the electoral college. Second such occurrence.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"republican",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",NE:"republican",NV:"republican",NH:"republican",NJ:"democrat",NY:"republican",NC:"democrat",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",TN:"democrat",TX:"democrat",VT:"republican",VA:"democrat",WV:"democrat",WI:"republican"}},
+  {year:1892,winner:"Grover Cleveland",winner_party:"democrat",winner_ev:277,runner_up:"Benjamin Harrison",runner_up_party:"republican",runner_up_ev:145,total_ev:444,winner_pv_pct:46.02,runner_up_pv_pct:43.01,third_party_candidates:[{name:"James B. Weaver",party:"populist",ev:22,pv_pct:8.50}],notes:"Cleveland became the only president to serve two non-consecutive terms. Populist Party won 5 states.",states:{AL:"democrat",AR:"democrat",CA:"democrat",CO:"populist",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",ID:"populist",IL:"democrat",IN:"democrat",IA:"republican",KS:"populist",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",MT:"republican",NE:"republican",NV:"populist",NH:"republican",NJ:"democrat",NY:"democrat",NC:"democrat",ND:"republican",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",VT:"republican",VA:"democrat",WA:"republican",WV:"democrat",WI:"democrat",WY:"populist"}},
+  {year:1896,winner:"William McKinley",winner_party:"republican",winner_ev:271,runner_up:"William Jennings Bryan",runner_up_party:"democrat",runner_up_ev:176,total_ev:447,winner_pv_pct:51.02,runner_up_pv_pct:46.71,third_party_candidates:[],notes:"Bryan ran on free silver platform. McKinley won the Northeast and Midwest.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"democrat",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"democrat",KY:"republican",LA:"democrat",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",MT:"democrat",NE:"democrat",NV:"democrat",NH:"republican",NJ:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"democrat",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"republican",WI:"republican",WY:"democrat"}},
+  {year:1900,winner:"William McKinley",winner_party:"republican",winner_ev:292,runner_up:"William Jennings Bryan",runner_up_party:"democrat",runner_up_ev:155,total_ev:447,winner_pv_pct:51.64,runner_up_pv_pct:45.52,third_party_candidates:[],notes:"McKinley re-elected, with Theodore Roosevelt as VP. McKinley assassinated in 1901.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"democrat",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",MT:"democrat",NE:"republican",NV:"democrat",NH:"republican",NJ:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"republican",VT:"republican",VA:"democrat",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1904,winner:"Theodore Roosevelt",winner_party:"republican",winner_ev:336,runner_up:"Alton B. Parker",runner_up_party:"democrat",runner_up_ev:140,total_ev:476,winner_pv_pct:56.42,runner_up_pv_pct:37.59,third_party_candidates:[{name:"Eugene V. Debs",party:"socialist",ev:0,pv_pct:2.98}],notes:"Roosevelt won by landslide in his own right. Parker won only the Solid South.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"republican",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"republican",VT:"republican",VA:"democrat",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1908,winner:"William Howard Taft",winner_party:"republican",winner_ev:321,runner_up:"William Jennings Bryan",runner_up_party:"democrat",runner_up_ev:162,total_ev:483,winner_pv_pct:51.57,runner_up_pv_pct:43.04,third_party_candidates:[{name:"Eugene V. Debs",party:"socialist",ev:0,pv_pct:2.83}],notes:"Taft, Roosevelt's chosen successor, won. Bryan ran for the third and final time.",states:{AL:"democrat",AR:"democrat",CA:"republican",CO:"democrat",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"republican",MT:"republican",NE:"democrat",NV:"democrat",NH:"republican",NJ:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OK:"democrat",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"republican",VT:"republican",VA:"democrat",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1912,winner:"Woodrow Wilson",winner_party:"democrat",winner_ev:435,runner_up:"Theodore Roosevelt",runner_up_party:"progressive",runner_up_ev:88,total_ev:531,winner_pv_pct:41.84,runner_up_pv_pct:27.40,third_party_candidates:[{name:"William Howard Taft",party:"republican",ev:8,pv_pct:23.18},{name:"Eugene V. Debs",party:"socialist",ev:0,pv_pct:5.99}],notes:"Roosevelt's Bull Moose Party split the Republican vote. Wilson won 40 states with only 41.8%.",states:{AL:"democrat",AZ:"democrat",AR:"democrat",CA:"progressive",CO:"democrat",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",ID:"democrat",IL:"democrat",IN:"democrat",IA:"democrat",KS:"democrat",KY:"democrat",LA:"democrat",ME:"democrat",MD:"democrat",MA:"democrat",MI:"progressive",MN:"progressive",MS:"democrat",MO:"democrat",MT:"democrat",NE:"democrat",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"democrat",OH:"democrat",OK:"democrat",OR:"democrat",PA:"progressive",RI:"democrat",SC:"democrat",SD:"progressive",TN:"democrat",TX:"democrat",UT:"republican",VT:"republican",VA:"democrat",WA:"progressive",WV:"democrat",WI:"democrat",WY:"democrat"}},
+  {year:1916,winner:"Woodrow Wilson",winner_party:"democrat",winner_ev:277,runner_up:"Charles Evans Hughes",runner_up_party:"republican",runner_up_ev:254,total_ev:531,winner_pv_pct:49.24,runner_up_pv_pct:46.12,third_party_candidates:[{name:"Allan L. Benson",party:"socialist",ev:0,pv_pct:3.18}],notes:"Very close election; Wilson won by carrying California by 3,773 votes.",states:{AL:"democrat",AZ:"democrat",AR:"democrat",CA:"democrat",CO:"democrat",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"democrat",IL:"republican",IN:"republican",IA:"republican",KS:"democrat",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",MT:"democrat",NE:"democrat",NV:"democrat",NH:"democrat",NJ:"republican",NM:"democrat",NY:"republican",NC:"democrat",ND:"democrat",OH:"democrat",OK:"democrat",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"democrat",WI:"republican",WY:"democrat"}},
+  {year:1920,winner:"Warren G. Harding",winner_party:"republican",winner_ev:404,runner_up:"James M. Cox",runner_up_party:"democrat",runner_up_ev:127,total_ev:531,winner_pv_pct:60.32,runner_up_pv_pct:34.15,third_party_candidates:[{name:"Eugene V. Debs",party:"socialist",ev:0,pv_pct:3.41}],notes:"Largest popular vote margin at the time. First election with women's suffrage nationwide.",states:{AL:"democrat",AZ:"republican",AR:"democrat",CA:"republican",CO:"republican",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"republican",TX:"democrat",UT:"republican",VT:"republican",VA:"democrat",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1924,winner:"Calvin Coolidge",winner_party:"republican",winner_ev:382,runner_up:"John W. Davis",runner_up_party:"democrat",runner_up_ev:136,total_ev:531,winner_pv_pct:54.04,runner_up_pv_pct:28.82,third_party_candidates:[{name:"Robert M. La Follette",party:"progressive",ev:13,pv_pct:16.62}],notes:"La Follette (Progressive) won Wisconsin. Democrats chose Davis on 103rd ballot.",states:{AL:"democrat",AZ:"republican",AR:"democrat",CA:"republican",CO:"republican",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"democrat",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OK:"democrat",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"republican",VT:"republican",VA:"democrat",WA:"republican",WV:"republican",WI:"progressive",WY:"republican"}},
+  {year:1928,winner:"Herbert Hoover",winner_party:"republican",winner_ev:444,runner_up:"Al Smith",runner_up_party:"democrat",runner_up_ev:87,total_ev:531,winner_pv_pct:58.21,runner_up_pv_pct:40.80,third_party_candidates:[],notes:"Smith, first Catholic nominee. Hoover broke the Solid South, winning FL, NC, TN, TX, VA.",states:{AL:"democrat",AZ:"republican",AR:"democrat",CA:"republican",CO:"republican",CT:"republican",DE:"republican",FL:"republican",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"democrat",ME:"republican",MD:"republican",MA:"democrat",MI:"republican",MN:"republican",MS:"democrat",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"democrat",SC:"democrat",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1932,winner:"Franklin D. Roosevelt",winner_party:"democrat",winner_ev:472,runner_up:"Herbert Hoover",runner_up_party:"republican",runner_up_ev:59,total_ev:531,winner_pv_pct:57.41,runner_up_pv_pct:39.65,third_party_candidates:[{name:"Norman Thomas",party:"socialist",ev:0,pv_pct:2.23}],notes:"Great Depression election. FDR won 42 states. New Deal coalition formed.",states:{AL:"democrat",AZ:"democrat",AR:"democrat",CA:"democrat",CO:"democrat",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"democrat",IL:"democrat",IN:"democrat",IA:"democrat",KS:"democrat",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"democrat",MO:"democrat",MT:"democrat",NE:"democrat",NV:"democrat",NH:"republican",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"democrat",OH:"democrat",OK:"democrat",OR:"democrat",PA:"republican",RI:"democrat",SC:"democrat",SD:"democrat",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"democrat",WI:"democrat",WY:"democrat"}},
+  {year:1936,winner:"Franklin D. Roosevelt",winner_party:"democrat",winner_ev:523,runner_up:"Alf Landon",runner_up_party:"republican",runner_up_ev:8,total_ev:531,winner_pv_pct:60.80,runner_up_pv_pct:36.54,third_party_candidates:[{name:"William Lemke",party:"union",ev:0,pv_pct:1.96}],notes:"FDR won 46 of 48 states; Landon won only Maine and Vermont. One of the greatest landslides ever.",states:{AL:"democrat",AZ:"democrat",AR:"democrat",CA:"democrat",CO:"democrat",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",ID:"democrat",IL:"democrat",IN:"democrat",IA:"democrat",KS:"democrat",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"democrat",MO:"democrat",MT:"democrat",NE:"democrat",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"democrat",OH:"democrat",OK:"democrat",OR:"democrat",PA:"democrat",RI:"democrat",SC:"democrat",SD:"democrat",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"democrat",WI:"democrat",WY:"democrat"}},
+  {year:1940,winner:"Franklin D. Roosevelt",winner_party:"democrat",winner_ev:449,runner_up:"Wendell Willkie",runner_up_party:"republican",runner_up_ev:82,total_ev:531,winner_pv_pct:54.74,runner_up_pv_pct:44.78,third_party_candidates:[],notes:"FDR broke the two-term tradition, winning an unprecedented third term.",states:{AL:"democrat",AZ:"democrat",AR:"democrat",CA:"democrat",CO:"republican",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",ID:"democrat",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"democrat",MI:"republican",MN:"democrat",MS:"democrat",MO:"democrat",MT:"democrat",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"republican",OH:"democrat",OK:"democrat",OR:"democrat",PA:"democrat",RI:"democrat",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"democrat",WI:"democrat",WY:"republican"}},
+  {year:1944,winner:"Franklin D. Roosevelt",winner_party:"democrat",winner_ev:432,runner_up:"Thomas E. Dewey",runner_up_party:"republican",runner_up_ev:99,total_ev:531,winner_pv_pct:53.39,runner_up_pv_pct:45.89,third_party_candidates:[],notes:"FDR won unprecedented fourth term during World War II. FDR died April 12, 1945; Truman succeeded him.",states:{AL:"democrat",AZ:"democrat",AR:"democrat",CA:"democrat",CO:"republican",CT:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",ID:"democrat",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"democrat",MO:"democrat",MT:"democrat",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"republican",OH:"republican",OK:"democrat",OR:"democrat",PA:"democrat",RI:"democrat",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"democrat",WI:"republican",WY:"republican"}},
+  {year:1948,winner:"Harry S. Truman",winner_party:"democrat",winner_ev:303,runner_up:"Thomas E. Dewey",runner_up_party:"republican",runner_up_ev:189,total_ev:531,winner_pv_pct:49.55,runner_up_pv_pct:45.07,third_party_candidates:[{name:"Strom Thurmond",party:"states-rights",ev:39,pv_pct:2.41},{name:"Henry A. Wallace",party:"progressive",ev:0,pv_pct:2.38}],notes:"Famous upset; 'Dewey Defeats Truman' headline. Thurmond (Dixiecrat) won AL, LA, MS, SC.",states:{AL:"states-rights",AZ:"democrat",AR:"democrat",CA:"democrat",CO:"democrat",CT:"republican",DE:"republican",FL:"democrat",GA:"democrat",ID:"democrat",IL:"democrat",IN:"republican",IA:"democrat",KS:"republican",KY:"democrat",LA:"states-rights",ME:"republican",MD:"republican",MA:"democrat",MI:"republican",MN:"democrat",MS:"states-rights",MO:"democrat",MT:"democrat",NE:"republican",NV:"democrat",NH:"republican",NJ:"republican",NM:"democrat",NY:"republican",NC:"democrat",ND:"republican",OH:"democrat",OK:"democrat",OR:"republican",PA:"republican",RI:"democrat",SC:"states-rights",SD:"republican",TN:"democrat",TX:"democrat",UT:"democrat",VT:"republican",VA:"democrat",WA:"democrat",WV:"democrat",WI:"democrat",WY:"democrat"}},
+  {year:1952,winner:"Dwight D. Eisenhower",winner_party:"republican",winner_ev:442,runner_up:"Adlai Stevenson II",runner_up_party:"democrat",runner_up_ev:89,total_ev:531,winner_pv_pct:55.18,runner_up_pv_pct:44.33,third_party_candidates:[],notes:"Eisenhower broke the Solid South, winning FL, TX, VA, TN. First election with widespread TV advertising.",states:{AL:"democrat",AZ:"republican",AR:"democrat",CA:"republican",CO:"republican",CT:"republican",DE:"republican",FL:"republican",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"democrat",WI:"republican",WY:"republican"}},
+  {year:1956,winner:"Dwight D. Eisenhower",winner_party:"republican",winner_ev:457,runner_up:"Adlai Stevenson II",runner_up_party:"democrat",runner_up_ev:73,total_ev:531,winner_pv_pct:57.37,runner_up_pv_pct:41.97,third_party_candidates:[],notes:"Eisenhower won 41 states including LA and TX. Stevenson won only 7 states.",states:{AL:"democrat",AZ:"republican",AR:"democrat",CA:"republican",CO:"republican",CT:"republican",DE:"republican",FL:"republican",GA:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"republican",MS:"democrat",MO:"democrat",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"democrat",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"democrat",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1960,winner:"John F. Kennedy",winner_party:"democrat",winner_ev:303,runner_up:"Richard Nixon",runner_up_party:"republican",runner_up_ev:219,total_ev:537,winner_pv_pct:49.72,runner_up_pv_pct:49.55,third_party_candidates:[{name:"Harry F. Byrd",party:"democrat",ev:15,pv_pct:0.0}],notes:"Kennedy became first Catholic president. Narrowest popular vote margin of the 20th century (0.17%).",states:{AK:"republican",AL:"democrat",AR:"democrat",AZ:"republican",CA:"republican",CO:"republican",CT:"democrat",DE:"democrat",FL:"republican",GA:"democrat",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"democrat",ME:"republican",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"democrat",MO:"democrat",MT:"republican",NE:"republican",NV:"democrat",NH:"republican",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"democrat",RI:"democrat",SC:"democrat",SD:"republican",TN:"republican",TX:"democrat",UT:"republican",VT:"republican",VA:"republican",WA:"democrat",WV:"democrat",WI:"democrat",WY:"republican"}},
+  {year:1964,winner:"Lyndon B. Johnson",winner_party:"democrat",winner_ev:486,runner_up:"Barry Goldwater",runner_up_party:"republican",runner_up_ev:52,total_ev:538,winner_pv_pct:61.05,runner_up_pv_pct:38.47,third_party_candidates:[],notes:"LBJ won one of the greatest landslides in US history. Goldwater won only AZ and 5 Deep South states.",states:{AK:"democrat",AL:"republican",AR:"democrat",AZ:"republican",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"democrat",GA:"republican",HI:"democrat",ID:"democrat",IL:"democrat",IN:"democrat",IA:"democrat",KS:"democrat",KY:"democrat",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"democrat",MT:"democrat",NE:"democrat",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"democrat",OH:"democrat",OK:"democrat",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"democrat",TN:"democrat",TX:"democrat",UT:"democrat",VT:"democrat",VA:"democrat",WA:"democrat",WV:"democrat",WI:"democrat",WY:"democrat"}},
+  {year:1968,winner:"Richard Nixon",winner_party:"republican",winner_ev:301,runner_up:"Hubert Humphrey",runner_up_party:"democrat",runner_up_ev:191,total_ev:538,winner_pv_pct:43.42,runner_up_pv_pct:42.72,third_party_candidates:[{name:"George Wallace",party:"american-independent",ev:46,pv_pct:13.53}],notes:"Wallace won 5 Deep South states. Nixon won the 'Southern Strategy.' RFK and MLK assassinated during campaign year.",states:{AK:"republican",AL:"american-independent",AR:"american-independent",AZ:"republican",CA:"republican",CO:"republican",CT:"democrat",DC:"democrat",DE:"republican",FL:"republican",GA:"american-independent",HI:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"american-independent",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"american-independent",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"democrat",UT:"republican",VT:"republican",VA:"republican",WA:"democrat",WV:"democrat",WI:"republican",WY:"republican"}},
+  {year:1972,winner:"Richard Nixon",winner_party:"republican",winner_ev:520,runner_up:"George McGovern",runner_up_party:"democrat",runner_up_ev:17,total_ev:538,winner_pv_pct:60.67,runner_up_pv_pct:37.52,third_party_candidates:[],notes:"Nixon won 49 of 50 states; McGovern won only MA and DC. Watergate break-in occurred during campaign.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"republican",CO:"republican",CT:"republican",DC:"democrat",DE:"republican",FL:"republican",GA:"republican",HI:"republican",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"republican",MD:"republican",MA:"democrat",MI:"republican",MN:"republican",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1976,winner:"Jimmy Carter",winner_party:"democrat",winner_ev:297,runner_up:"Gerald Ford",runner_up_party:"republican",runner_up_ev:240,total_ev:538,winner_pv_pct:50.08,runner_up_pv_pct:48.02,third_party_candidates:[],notes:"Carter swept the South. Ford (who pardoned Nixon) lost by narrow margins.",states:{AK:"republican",AL:"democrat",AR:"democrat",AZ:"republican",CA:"republican",CO:"republican",CT:"republican",DC:"democrat",DE:"democrat",FL:"democrat",GA:"democrat",HI:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"democrat",LA:"democrat",ME:"republican",MD:"democrat",MA:"democrat",MI:"republican",MN:"democrat",MS:"democrat",MO:"democrat",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"democrat",NC:"democrat",ND:"republican",OH:"democrat",OK:"republican",OR:"republican",PA:"democrat",RI:"democrat",SC:"democrat",SD:"republican",TN:"democrat",TX:"democrat",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"democrat",WI:"democrat",WY:"republican"}},
+  {year:1980,winner:"Ronald Reagan",winner_party:"republican",winner_ev:489,runner_up:"Jimmy Carter",runner_up_party:"democrat",runner_up_ev:49,total_ev:538,winner_pv_pct:50.75,runner_up_pv_pct:41.01,third_party_candidates:[{name:"John B. Anderson",party:"independent",ev:0,pv_pct:6.61}],notes:"Reagan won 44 states. Carter won only 6 states + DC. Iranian hostage crisis and 'stagflation' hurt Carter.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"republican",CO:"republican",CT:"republican",DC:"democrat",DE:"republican",FL:"republican",GA:"democrat",HI:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"republican",MD:"democrat",MA:"republican",MI:"republican",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"democrat",WI:"republican",WY:"republican"}},
+  {year:1984,winner:"Ronald Reagan",winner_party:"republican",winner_ev:525,runner_up:"Walter Mondale",runner_up_party:"democrat",runner_up_ev:13,total_ev:538,winner_pv_pct:58.77,runner_up_pv_pct:40.56,third_party_candidates:[],notes:"Reagan won 49 of 50 states; Mondale won only MN (by 3,761 votes) and DC.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"republican",CO:"republican",CT:"republican",DC:"democrat",DE:"republican",FL:"republican",GA:"republican",HI:"republican",ID:"republican",IL:"republican",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"republican",MD:"republican",MA:"republican",MI:"republican",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"republican",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"republican",PA:"republican",RI:"republican",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"republican",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:1988,winner:"George H. W. Bush",winner_party:"republican",winner_ev:426,runner_up:"Michael Dukakis",runner_up_party:"democrat",runner_up_ev:111,total_ev:538,winner_pv_pct:53.37,runner_up_pv_pct:45.65,third_party_candidates:[],notes:"Bush won 40 states. Willie Horton ads and Dukakis tank photo became iconic campaign moments.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"republican",CO:"republican",CT:"republican",DC:"democrat",DE:"republican",FL:"republican",GA:"republican",HI:"democrat",ID:"republican",IL:"republican",IN:"republican",IA:"democrat",KS:"republican",KY:"republican",LA:"republican",ME:"republican",MD:"republican",MA:"democrat",MI:"republican",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"republican",NM:"republican",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"democrat",PA:"republican",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"republican",VA:"republican",WA:"democrat",WV:"democrat",WI:"democrat",WY:"republican"}},
+  {year:1992,winner:"Bill Clinton",winner_party:"democrat",winner_ev:370,runner_up:"George H. W. Bush",runner_up_party:"republican",runner_up_ev:168,total_ev:538,winner_pv_pct:43.01,runner_up_pv_pct:37.45,third_party_candidates:[{name:"Ross Perot",party:"independent",ev:0,pv_pct:18.91}],notes:"Perot won 18.9% but no EVs. Clinton won with only 43%. 'It's the economy, stupid.'",states:{AK:"republican",AL:"republican",AR:"democrat",AZ:"republican",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"republican",GA:"democrat",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"democrat",KS:"republican",KY:"democrat",LA:"democrat",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"democrat",MT:"democrat",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"democrat",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"democrat",TX:"republican",UT:"republican",VT:"democrat",VA:"republican",WA:"democrat",WV:"democrat",WI:"democrat",WY:"republican"}},
+  {year:1996,winner:"Bill Clinton",winner_party:"democrat",winner_ev:379,runner_up:"Bob Dole",runner_up_party:"republican",runner_up_ev:159,total_ev:538,winner_pv_pct:49.23,runner_up_pv_pct:40.72,third_party_candidates:[{name:"Ross Perot",party:"reform",ev:0,pv_pct:8.40}],notes:"Clinton re-elected comfortably. Perot ran again under Reform Party.",states:{AK:"republican",AL:"republican",AR:"democrat",AZ:"democrat",CA:"democrat",CO:"republican",CT:"democrat",DC:"democrat",DE:"democrat",FL:"democrat",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"democrat",KS:"republican",KY:"democrat",LA:"democrat",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"democrat",MT:"republican",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"democrat",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"democrat",TX:"republican",UT:"republican",VT:"democrat",VA:"republican",WA:"democrat",WV:"democrat",WI:"democrat",WY:"republican"}},
+  {year:2000,winner:"George W. Bush",winner_party:"republican",winner_ev:271,runner_up:"Al Gore",runner_up_party:"democrat",runner_up_ev:266,total_ev:538,winner_pv_pct:47.87,runner_up_pv_pct:48.38,third_party_candidates:[{name:"Ralph Nader",party:"green",ev:0,pv_pct:2.74}],notes:"Gore won the popular vote. Supreme Court stopped Florida recount; Bush won FL by 537 votes.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"democrat",CO:"republican",CT:"democrat",DC:"democrat",DE:"democrat",FL:"republican",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"republican",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"republican",WA:"democrat",WV:"republican",WI:"democrat",WY:"republican"}},
+  {year:2004,winner:"George W. Bush",winner_party:"republican",winner_ev:286,runner_up:"John Kerry",runner_up_party:"democrat",runner_up_ev:251,total_ev:538,winner_pv_pct:50.73,runner_up_pv_pct:48.27,third_party_candidates:[],notes:"Post-9/11 security focus. Kerry lost Ohio by 118,601 votes. Bush won 31 states.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"democrat",CO:"republican",CT:"democrat",DC:"democrat",DE:"democrat",FL:"republican",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"democrat",NJ:"democrat",NM:"republican",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"republican",WA:"democrat",WV:"republican",WI:"democrat",WY:"republican"}},
+  {year:2008,winner:"Barack Obama",winner_party:"democrat",winner_ev:365,runner_up:"John McCain",runner_up_party:"republican",runner_up_ev:173,total_ev:538,winner_pv_pct:52.93,runner_up_pv_pct:45.66,third_party_candidates:[],notes:"Obama became first African American president. Financial crisis hurt Republicans.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"democrat",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"democrat",IA:"democrat",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"democrat",ND:"republican",OH:"democrat",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"democrat",WA:"democrat",WV:"republican",WI:"democrat",WY:"republican"}},
+  {year:2012,winner:"Barack Obama",winner_party:"democrat",winner_ev:332,runner_up:"Mitt Romney",runner_up_party:"republican",runner_up_ev:206,total_ev:538,winner_pv_pct:51.06,runner_up_pv_pct:47.20,third_party_candidates:[],notes:"Obama re-elected. Won all swing states: OH, VA, FL, CO, NV, IA, NH, WI.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"democrat",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"democrat",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"democrat",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"democrat",WA:"democrat",WV:"republican",WI:"democrat",WY:"republican"}},
+  {year:2016,winner:"Donald Trump",winner_party:"republican",winner_ev:304,runner_up:"Hillary Clinton",runner_up_party:"democrat",runner_up_ev:227,total_ev:538,winner_pv_pct:46.09,runner_up_pv_pct:48.18,third_party_candidates:[{name:"Gary Johnson",party:"libertarian",ev:0,pv_pct:3.27},{name:"Jill Stein",party:"green",ev:0,pv_pct:1.07}],notes:"Clinton won the popular vote by ~2.9 million but lost the electoral college. Trump flipped PA, MI, WI, FL, OH, IA.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"republican",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"republican",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"democrat",PA:"republican",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"democrat",WA:"democrat",WV:"republican",WI:"republican",WY:"republican"}},
+  {year:2020,winner:"Joe Biden",winner_party:"democrat",winner_ev:306,runner_up:"Donald Trump",runner_up_party:"republican",runner_up_ev:232,total_ev:538,winner_pv_pct:51.31,runner_up_pv_pct:46.86,third_party_candidates:[],notes:"Biden won amid COVID-19 pandemic. Flipped AZ, GA, MI, PA, WI. Election challenged; January 6 Capitol riot.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"democrat",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"republican",GA:"democrat",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"democrat",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"democrat",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"democrat",PA:"democrat",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"democrat",WA:"democrat",WV:"republican",WI:"democrat",WY:"republican"}},
+  {year:2024,winner:"Donald Trump",winner_party:"republican",winner_ev:312,runner_up:"Kamala Harris",runner_up_party:"democrat",runner_up_ev:226,total_ev:538,winner_pv_pct:49.80,runner_up_pv_pct:48.32,third_party_candidates:[],notes:"Trump became the first president since Grover Cleveland to win non-consecutive terms. Flipped AZ, GA, MI, NV, NC, PA, WI.",states:{AK:"republican",AL:"republican",AR:"republican",AZ:"republican",CA:"democrat",CO:"democrat",CT:"democrat",DC:"democrat",DE:"democrat",FL:"republican",GA:"republican",HI:"democrat",ID:"republican",IL:"democrat",IN:"republican",IA:"republican",KS:"republican",KY:"republican",LA:"republican",ME:"democrat",MD:"democrat",MA:"democrat",MI:"republican",MN:"democrat",MS:"republican",MO:"republican",MT:"republican",NE:"republican",NV:"republican",NH:"democrat",NJ:"democrat",NM:"democrat",NY:"democrat",NC:"republican",ND:"republican",OH:"republican",OK:"republican",OR:"democrat",PA:"republican",RI:"democrat",SC:"republican",SD:"republican",TN:"republican",TX:"republican",UT:"republican",VT:"democrat",VA:"democrat",WA:"democrat",WV:"republican",WI:"republican",WY:"republican"}}
+];
+
+// ============================================
+// PARTY COLORS
+// ============================================
+const PARTY_COLORS = {
+  'republican': '#d32f2f',
+  'democrat': '#1565c0',
+  'federalist': '#7b1fa2',
+  'dem-rep': '#00796b',
+  'whig': '#ef6c00',
+  'independent': '#ffd600',
+  'know-nothing': '#6d4c41',
+  'states-rights': '#8b0000',
+  'american-independent': '#1b5e20',
+  'progressive': '#388e3c',
+  'populist': '#e65100',
+  'national-republican': '#5e35b1',
+  'constitutional-union': '#ff8f00',
+  'nullifier': '#4a148c',
+  'anti-masonic': '#bf360c',
+  'liberty': '#2e7d32',
+  'free-soil': '#558b2f',
+  'socialist': '#c62828',
+  'greenback': '#827717',
+  'prohibition': '#4e342e',
+  'liberal-republican': '#00695c',
+  'union': '#795548',
+  'reform': '#f57f17',
+  'green': '#2e7d32',
+  'libertarian': '#f9a825',
+  // 1824 special candidates
+  'jackson': '#1565c0',
+  'adams': '#7b1fa2',
+  'crawford': '#00796b',
+  'clay': '#ef6c00'
+};
+
+const PARTY_LABELS = {
+  'republican': 'Republican',
+  'democrat': 'Democrat',
+  'federalist': 'Federalist',
+  'dem-rep': 'Dem-Republican',
+  'whig': 'Whig',
+  'independent': 'Independent',
+  'know-nothing': 'Know-Nothing',
+  'states-rights': 'States\' Rights',
+  'american-independent': 'Am. Independent',
+  'progressive': 'Progressive',
+  'populist': 'Populist',
+  'national-republican': 'Nat. Republican',
+  'constitutional-union': 'Const. Union',
+  'nullifier': 'Nullifier',
+  'anti-masonic': 'Anti-Masonic',
+  'liberty': 'Liberty',
+  'free-soil': 'Free Soil',
+  'socialist': 'Socialist',
+  'greenback': 'Greenback',
+  'prohibition': 'Prohibition',
+  'liberal-republican': 'Liberal Republican',
+  'union': 'Union',
+  'reform': 'Reform',
+  'green': 'Green',
+  'libertarian': 'Libertarian',
+  'jackson': 'Jackson',
+  'adams': 'Adams',
+  'crawford': 'Crawford',
+  'clay': 'Clay'
+};
+
+// FIPS code mapping for state abbreviation to FIPS id
+const STATE_FIPS = {AL:"01",AK:"02",AZ:"04",AR:"05",CA:"06",CO:"08",CT:"09",DE:"10",DC:"11",FL:"12",GA:"13",HI:"15",ID:"16",IL:"17",IN:"18",IA:"19",KS:"20",KY:"21",LA:"22",ME:"23",MD:"24",MA:"25",MI:"26",MN:"27",MS:"28",MO:"29",MT:"30",NE:"31",NV:"32",NH:"33",NJ:"34",NM:"35",NY:"36",NC:"37",ND:"38",OH:"39",OK:"40",OR:"41",PA:"42",RI:"44",SC:"45",SD:"46",TN:"47",TX:"48",UT:"49",VT:"50",VA:"51",WA:"53",WV:"54",WI:"55",WY:"56"};
+
+const FIPS_TO_STATE = {};
+Object.entries(STATE_FIPS).forEach(([k,v]) => FIPS_TO_STATE[v] = k);
+
+const STATE_NAMES = {AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"District of Columbia",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"};
+
+// ============================================
+// APP STATE
+// ============================================
+let currentYearIndex = ELECTION_DATA.length - 1;
+let isPlaying = false;
+let playInterval = null;
+let playSpeed = 2000;
+let showSwing = false;
+let countyMode = false;
+let countyTopoData = null;
+let statesGeo = null;
+let svg, g, projection;
+
+// ============================================
+// INITIALIZATION
+// ============================================
+async function init() {
+  try {
+    const statesUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-albers-10m.json';
+    const topoData = await d3.json(statesUrl);
+    statesGeo = topojson.feature(topoData, topoData.objects.states);
+
+    createMap(statesGeo, topoData);
+    buildTimeline();
+    updateAll();
+
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    setTimeout(() => { document.getElementById('loadingOverlay').style.display = 'none'; }, 600);
+  } catch(e) {
+    console.error('Init error:', e);
+    document.querySelector('.loading-sub').textContent = 'Error loading map data. Please refresh.';
+  }
+}
+
+// ============================================
+// MAP CREATION
+// ============================================
+function createMap(geoData, topoData) {
+  const container = document.getElementById('mapContainer');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+
+  svg = d3.select('#mapContainer')
+    .append('svg')
+    .attr('viewBox', '0 0 975 610')
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('max-width', '100%')
+    .style('max-height', '100%');
+
+  // Background
+  svg.append('rect').attr('width', 975).attr('height', 610).attr('fill', 'transparent');
+
+  g = svg.append('g').attr('class', 'states-group');
+
+  // State borders (mesh)
+  const stateMesh = topojson.mesh(topoData, topoData.objects.states, (a, b) => a !== b);
+
+  g.selectAll('.state')
+    .data(geoData.features)
+    .enter()
+    .append('path')
+    .attr('class', 'state')
+    .attr('d', d3.geoPath())
+    .attr('data-fips', d => d.id)
+    .attr('fill', '#2a2a4a')
+    .on('mouseover', onStateHover)
+    .on('mousemove', onStateMove)
+    .on('mouseout', onStateOut)
+    .on('click', onStateClick);
+
+  g.append('path')
+    .attr('class', 'state-borders')
+    .datum(stateMesh)
+    .attr('d', d3.geoPath())
+    .attr('fill', 'none')
+    .attr('stroke', 'rgba(255,255,255,0.12)')
+    .attr('stroke-width', 0.5);
+}
+
+// ============================================
+// TOOLTIP
+// ============================================
+const tooltip = document.getElementById('tooltip');
+
+function onStateHover(event, d) {
+  const stateAbbr = FIPS_TO_STATE[d.id];
+  if (!stateAbbr) return;
+  const election = ELECTION_DATA[currentYearIndex];
+  const party = election.states[stateAbbr];
+  const stateName = STATE_NAMES[stateAbbr] || stateAbbr;
+
+  const ttState = tooltip.querySelector('.tt-state');
+  const ttParty = tooltip.querySelector('.tt-party');
+
+  ttState.textContent = stateName;
+  if (party) {
+    const label = PARTY_LABELS[party] || party;
+    const color = PARTY_COLORS[party] || '#555';
+    ttParty.textContent = label;
+    ttParty.style.background = color;
+    ttParty.style.color = '#fff';
+    ttParty.style.display = 'inline-block';
+  } else {
+    ttParty.textContent = 'Not yet a state';
+    ttParty.style.background = 'rgba(255,255,255,0.1)';
+    ttParty.style.color = 'var(--text-muted)';
+    ttParty.style.display = 'inline-block';
+  }
+  tooltip.classList.add('show');
+}
+
+function onStateMove(event) {
+  tooltip.style.left = (event.clientX + 14) + 'px';
+  tooltip.style.top = (event.clientY - 10) + 'px';
+}
+
+function onStateOut() {
+  tooltip.classList.remove('show');
+}
+
+// ============================================
+// STATE CLICK → COUNTY VIEW
+// ============================================
+function onStateClick(event, d) {
+  const election = ELECTION_DATA[currentYearIndex];
+  if (election.year < 2000) return;
+
+  const stateAbbr = FIPS_TO_STATE[d.id];
+  if (!stateAbbr) return;
+  const party = election.states[stateAbbr];
+  if (!party) return;
+
+  enterCountyView(d, stateAbbr, party);
+}
+
+async function enterCountyView(stateFeat, stateAbbr, party) {
+  if (!countyTopoData) {
+    try {
+      countyTopoData = await d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/counties-albers-10m.json');
+    } catch(e) {
+      console.error('County load error:', e);
+      return;
+    }
+  }
+
+  countyMode = true;
+  const fipsPrefix = STATE_FIPS[stateAbbr];
+  const counties = topojson.feature(countyTopoData, countyTopoData.objects.counties);
+  const stateCounties = counties.features.filter(c => String(c.id).padStart(5,'0').startsWith(fipsPrefix));
+
+  // Compute bounding box
+  const allCoords = [];
+  stateCounties.forEach(c => {
+    const b = d3.geoPath().bounds(c);
+    allCoords.push(b[0], b[1]);
+  });
+  const xMin = d3.min(allCoords, d=>d[0]);
+  const xMax = d3.max(allCoords, d=>d[0]);
+  const yMin = d3.min(allCoords, d=>d[1]);
+  const yMax = d3.max(allCoords, d=>d[1]);
+
+  const pad = 20;
+  const vbW = (xMax - xMin) + pad*2;
+  const vbH = (yMax - yMin) + pad*2;
+
+  svg.transition().duration(500).attr('viewBox', `${xMin-pad} ${yMin-pad} ${vbW} ${vbH}`);
+  g.selectAll('.state').transition().duration(400).style('opacity', 0.1);
+  g.select('.state-borders').transition().duration(400).style('opacity', 0.1);
+
+  const baseColor = PARTY_COLORS[party] || '#555';
+  const oppositeParty = party === 'republican' ? 'democrat' : 'republican';
+  const oppColor = PARTY_COLORS[oppositeParty] || '#555';
+
+  // Seeded hash for consistent county coloring
+  function hashFips(id) {
+    let h = 0;
+    const s = String(id);
+    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+    return Math.abs(h);
+  }
+
+  const countyG = svg.append('g').attr('class', 'county-group');
+  countyG.selectAll('.county')
+    .data(stateCounties)
+    .enter()
+    .append('path')
+    .attr('class', 'county')
+    .attr('d', d3.geoPath())
+    .attr('fill', (d) => {
+      const h = hashFips(d.id);
+      const r = (h % 100) / 100;
+      // ~25% of counties go to the opposite party for realism
+      if (r < 0.25) {
+        const variation = ((h % 50) / 50 - 0.5) * 0.3;
+        return d3.color(oppColor).brighter(variation).toString();
+      }
+      const variation = ((h % 70) / 70 - 0.5) * 0.5;
+      return d3.color(baseColor).brighter(variation).toString();
+    })
+    .attr('opacity', 0)
+    .transition().duration(600).delay((d,i) => i*5)
+    .attr('opacity', 1);
+
+  document.getElementById('countyBackBtn').classList.add('visible');
+  document.getElementById('countyNote').classList.add('visible');
+}
+
+function exitCountyView() {
+  countyMode = false;
+  svg.selectAll('.county-group').remove();
+  svg.transition().duration(500).attr('viewBox', '0 0 975 610');
+  g.selectAll('.state').transition().duration(400).style('opacity', 1);
+  g.select('.state-borders').transition().duration(400).style('opacity', 1);
+  document.getElementById('countyBackBtn').classList.remove('visible');
+  document.getElementById('countyNote').classList.remove('visible');
+}
+
+// ============================================
+// TIMELINE
+// ============================================
+function buildTimeline() {
+  const track = document.getElementById('timelineTrack');
+  track.innerHTML = '';
+
+  ELECTION_DATA.forEach((e, i) => {
+    const item = document.createElement('div');
+    item.className = 'timeline-item' + (i === currentYearIndex ? ' active' : '');
+    item.dataset.index = i;
+    item.onclick = () => selectYear(i);
+
+    const dot = document.createElement('div');
+    dot.className = 'timeline-dot';
+    dot.style.background = PARTY_COLORS[e.winner_party] || '#555';
+
+    const yearLabel = document.createElement('div');
+    yearLabel.className = 'timeline-year';
+    yearLabel.textContent = e.year;
+
+    const nameLabel = document.createElement('div');
+    nameLabel.className = 'timeline-winner-name';
+    nameLabel.textContent = e.winner.split(' ').pop();
+
+    item.appendChild(dot);
+    item.appendChild(yearLabel);
+    item.appendChild(nameLabel);
+    track.appendChild(item);
+  });
+
+  scrollTimelineToActive();
+}
+
+function scrollTimelineToActive() {
+  const scroll = document.getElementById('timelineScroll');
+  const active = document.querySelector('.timeline-item.active');
+  if (active && scroll) {
+    const scrollLeft = active.offsetLeft - scroll.clientWidth / 2 + active.clientWidth / 2;
+    scroll.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }
+}
+
+function selectYear(index) {
+  if (countyMode) exitCountyView();
+  currentYearIndex = index;
+  updateAll();
+  scrollTimelineToActive();
+}
+
+// ============================================
+// UPDATE ALL
+// ============================================
+function updateAll() {
+  const election = ELECTION_DATA[currentYearIndex];
+
+  // Year display
+  document.getElementById('yearDisplay').textContent = election.year;
+
+  // Map colors
+  updateMapColors(election);
+
+  // Timeline active
+  document.querySelectorAll('.timeline-item').forEach((el, i) => {
+    el.classList.toggle('active', i === currentYearIndex);
+  });
+
+  // Sidebar
+  updateSidebar(election);
+
+  // Swing states
+  if (showSwing) updateSwingStates();
+}
+
+function updateMapColors(election) {
+  g.selectAll('.state').each(function() {
+    const el = d3.select(this);
+    const fips = el.attr('data-fips');
+    const stateAbbr = FIPS_TO_STATE[fips];
+
+    if (!stateAbbr) {
+      el.transition().duration(500).attr('fill', '#2a2a4a');
+      return;
+    }
+
+    const party = election.states[stateAbbr];
+    if (party) {
+      el.transition().duration(500).attr('fill', PARTY_COLORS[party] || '#555');
+    } else {
+      el.transition().duration(500).attr('fill', '#2a2a4a');
+    }
+
+    // Reset swing glow
+    el.classed('swing-glow', false);
+  });
+}
+
+function updateSidebar(election) {
+  // Winner
+  document.getElementById('winnerName').textContent = election.winner;
+  const wBadge = document.getElementById('winnerBadge');
+  wBadge.textContent = PARTY_LABELS[election.winner_party] || election.winner_party;
+  wBadge.style.background = PARTY_COLORS[election.winner_party] || '#555';
+  wBadge.style.color = '#fff';
+  document.getElementById('winnerEV').innerHTML = election.winner_ev + '<small>Electoral Votes</small>';
+
+  // Runner-up
+  document.getElementById('runnerName').textContent = election.runner_up;
+  const rBadge = document.getElementById('runnerBadge');
+  rBadge.textContent = PARTY_LABELS[election.runner_up_party] || election.runner_up_party;
+  rBadge.style.background = PARTY_COLORS[election.runner_up_party] || '#555';
+  rBadge.style.color = '#fff';
+  document.getElementById('runnerEV').innerHTML = election.runner_up_ev + '<small>Electoral Votes</small>';
+
+  // EV Bar
+  const evBar = document.getElementById('evBar');
+  const otherEv = election.total_ev - election.winner_ev - election.runner_up_ev;
+
+  let segments = '';
+  const winnerPct = (election.winner_ev / election.total_ev * 100).toFixed(1);
+  const runnerPct = (election.runner_up_ev / election.total_ev * 100).toFixed(1);
+  const otherPct = (otherEv / election.total_ev * 100).toFixed(1);
+
+  segments += `<div class="ev-bar-segment" style="width:${winnerPct}%;background:${PARTY_COLORS[election.winner_party]||'#555'}"></div>`;
+  if (otherEv > 0) {
+    segments += `<div class="ev-bar-segment" style="width:${otherPct}%;background:#555"></div>`;
+  }
+  segments += `<div class="ev-bar-segment" style="width:${runnerPct}%;background:${PARTY_COLORS[election.runner_up_party]||'#555'}"></div>`;
+  evBar.innerHTML = segments;
+
+  document.getElementById('evLabelLeft').textContent = election.winner_ev;
+  document.getElementById('evLabelCenter').textContent = `Total: ${election.total_ev}`;
+  document.getElementById('evLabelRight').textContent = election.runner_up_ev;
+
+  // Popular vote
+  const pvSection = document.getElementById('sectionPV');
+  if (election.winner_pv_pct !== null) {
+    pvSection.style.display = '';
+    document.getElementById('pvWinner').textContent = election.winner_pv_pct.toFixed(1) + '%';
+    document.getElementById('pvWinner').style.color = PARTY_COLORS[election.winner_party] || '#fff';
+    document.getElementById('pvWinnerLabel').textContent = election.winner.split(' ').pop();
+    document.getElementById('pvRunner').textContent = election.runner_up_pv_pct.toFixed(1) + '%';
+    document.getElementById('pvRunner').style.color = PARTY_COLORS[election.runner_up_party] || '#fff';
+    document.getElementById('pvRunnerLabel').textContent = election.runner_up.split(' ').pop();
+  } else {
+    pvSection.style.display = 'none';
+  }
+
+  // Third parties
+  const tpSection = document.getElementById('sectionThird');
+  const tpList = document.getElementById('thirdPartyList');
+  if (election.third_party_candidates.length > 0) {
+    tpSection.style.display = '';
+    tpList.innerHTML = election.third_party_candidates.map(c => `
+      <li class="third-party-item">
+        <div>
+          <div class="tp-name">${c.name}</div>
+          <div class="tp-party">${PARTY_LABELS[c.party] || c.party}${c.pv_pct ? ' · ' + c.pv_pct + '%' : ''}</div>
+        </div>
+        <div class="tp-ev" style="color:${PARTY_COLORS[c.party]||'#888'}">${c.ev} EV</div>
+      </li>
+    `).join('');
+  } else {
+    tpSection.style.display = 'none';
+  }
+
+  // Notes
+  document.getElementById('electionNote').textContent = election.notes;
+
+  // Mobile info card
+  const mic = document.getElementById('mobileInfoCard');
+  if (mic) {
+    document.getElementById('micWinner').textContent = election.winner;
+    const mb = document.getElementById('micBadge');
+    mb.textContent = PARTY_LABELS[election.winner_party] || election.winner_party;
+    mb.style.background = PARTY_COLORS[election.winner_party] || '#555';
+    document.getElementById('micEV').innerHTML = election.winner_ev + '<small>Electoral Votes</small>';
+    const micBar = document.getElementById('micBar');
+    const wp = (election.winner_ev / election.total_ev * 100).toFixed(1);
+    const rp = (election.runner_up_ev / election.total_ev * 100).toFixed(1);
+    micBar.innerHTML = `<div class="mic-bar-seg" style="width:${wp}%;background:${PARTY_COLORS[election.winner_party]||'#555'}"></div><div class="mic-bar-seg" style="width:${rp}%;background:${PARTY_COLORS[election.runner_up_party]||'#555'}"></div>`;
+  }
+
+  // Swing section
+  const swingSection = document.getElementById('sectionSwing');
+  if (showSwing) {
+    swingSection.style.display = '';
+    const swings = getSwingStates();
+    document.getElementById('swingCount').textContent = swings.length;
+  } else {
+    swingSection.style.display = 'none';
+  }
+}
+
+// ============================================
+// SWING STATES
+// ============================================
+function getSwingStates() {
+  if (currentYearIndex === 0) return [];
+  const current = ELECTION_DATA[currentYearIndex];
+  const prev = ELECTION_DATA[currentYearIndex - 1];
+  const swings = [];
+
+  Object.entries(current.states).forEach(([st, party]) => {
+    const prevParty = prev.states[st];
+    if (prevParty && prevParty !== party) {
+      swings.push(st);
+    }
+  });
+
+  return swings;
+}
+
+function updateSwingStates() {
+  const swings = getSwingStates();
+
+  g.selectAll('.state').each(function() {
+    const el = d3.select(this);
+    const fips = el.attr('data-fips');
+    const stateAbbr = FIPS_TO_STATE[fips];
+    el.classed('swing-glow', swings.includes(stateAbbr));
+  });
+
+  document.getElementById('swingCount').textContent = swings.length;
+}
+
+function toggleSwing() {
+  showSwing = !showSwing;
+  document.getElementById('btnSwing').classList.toggle('active', showSwing);
+  const swingSection = document.getElementById('sectionSwing');
+
+  if (showSwing) {
+    swingSection.style.display = '';
+    updateSwingStates();
+  } else {
+    swingSection.style.display = 'none';
+    g.selectAll('.state').classed('swing-glow', false);
+  }
+}
+
+// ============================================
+// PLAYBACK
+// ============================================
+function togglePlay() {
+  if (isPlaying) {
+    stopPlay();
+  } else {
+    startPlay();
+  }
+}
+
+function startPlay() {
+  isPlaying = true;
+  document.getElementById('playIcon').style.display = 'none';
+  document.getElementById('pauseIcon').style.display = '';
+  document.getElementById('playLabel').textContent = 'Pause';
+
+  if (currentYearIndex >= ELECTION_DATA.length - 1) {
+    currentYearIndex = 0;
+    updateAll();
+    scrollTimelineToActive();
+  }
+
+  playInterval = setInterval(() => {
+    if (currentYearIndex < ELECTION_DATA.length - 1) {
+      if (countyMode) exitCountyView();
+      currentYearIndex++;
+      updateAll();
+      scrollTimelineToActive();
+    } else {
+      stopPlay();
+    }
+  }, playSpeed);
+}
+
+function stopPlay() {
+  isPlaying = false;
+  clearInterval(playInterval);
+  document.getElementById('playIcon').style.display = '';
+  document.getElementById('pauseIcon').style.display = 'none';
+  document.getElementById('playLabel').textContent = 'Play';
+}
+
+function setSpeed(speed, btn) {
+  playSpeed = speed;
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  if (isPlaying) {
+    clearInterval(playInterval);
+    playInterval = setInterval(() => {
+      if (currentYearIndex < ELECTION_DATA.length - 1) {
+        if (countyMode) exitCountyView();
+        currentYearIndex++;
+        updateAll();
+        scrollTimelineToActive();
+      } else {
+        stopPlay();
+      }
+    }, playSpeed);
+  }
+}
+
+// ============================================
+// MOBILE SIDEBAR
+// ============================================
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('mobile-open');
+}
+
+// ============================================
+// KEYBOARD CONTROLS
+// ============================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft' && currentYearIndex > 0) {
+    if (countyMode) exitCountyView();
+    currentYearIndex--;
+    updateAll();
+    scrollTimelineToActive();
+  } else if (e.key === 'ArrowRight' && currentYearIndex < ELECTION_DATA.length - 1) {
+    if (countyMode) exitCountyView();
+    currentYearIndex++;
+    updateAll();
+    scrollTimelineToActive();
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    togglePlay();
+  }
+});
+
+// Handle resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!countyMode && svg) {
+      svg.attr('viewBox', '0 0 975 610');
+    }
+    scrollTimelineToActive();
+  }, 200);
+});
+
+// Start!
+init();
+</script>
+</body>
+</html>

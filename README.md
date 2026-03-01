@@ -1,1 +1,3 @@
-# us-presidential-election-map
+# The Republic Decides
+
+An interactive web map of U.S. presidential elections from **1789–2024**, featuring national and county-level views, a historical timeline, swing-state highlights, and election summaries. Built with **HTML, CSS, JavaScript, D3.js, and TopoJSON**. Election data comes from **MIT Election Data and Science Lab** (modern), **Dave Leip’s Atlas / National Archives** (historical), with **U.S. Census Bureau TopoJSON** boundaries.
